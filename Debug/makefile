@@ -67,7 +67,7 @@ main-build: TEMP_TEST.elf secondary-outputs
 
 # Tool invocations
 TEMP_TEST.elf TEMP_TEST.map: $(OBJS) $(USER_OBJS) D:\STM32_Projects\TEMP_TEST\STM32F103C8TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "TEMP_TEST.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\STM32_Projects\TEMP_TEST\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TEMP_TEST.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "TEMP_TEST.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\STM32_Projects\TEMP_TEST\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="TEMP_TEST.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
