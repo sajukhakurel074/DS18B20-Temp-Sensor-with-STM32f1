@@ -1390,6 +1390,8 @@ int main(void) {
 		HAL_Delay(1);
  8000fb0:	2001      	movs	r0, #1
  8000fb2:	f000 fcdf 	bl	8001974 <HAL_Delay>
+
+
 		DS18B20_Write(0x33);  // Read ROM command for single device
  8000fb6:	2033      	movs	r0, #51	; 0x33
  8000fb8:	f000 f9f4 	bl	80013a4 <DS18B20_Write>
@@ -1428,7 +1430,7 @@ int main(void) {
  8000ffa:	2b07      	cmp	r3, #7
  8000ffc:	ddea      	ble.n	8000fd4 <main+0x60>
 		}
-		printf(" }\n");
+		printf("}\n");
  8000ffe:	482e      	ldr	r0, [pc, #184]	; (80010b8 <main+0x144>)
  8001000:	f002 fd12 	bl	8003a28 <puts>
 

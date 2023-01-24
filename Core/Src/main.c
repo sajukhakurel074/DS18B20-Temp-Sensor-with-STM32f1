@@ -128,6 +128,8 @@ int main(void) {
 		Presence = DS18B20_Start();
 		printf("Presence = %d\n", Presence);
 		HAL_Delay(1);
+
+
 		DS18B20_Write(0x33);  // Read ROM command for single device
 
 		uint64_t id = 0;
@@ -136,7 +138,7 @@ int main(void) {
 			((uint8_t*) &id)[i] = DS18B20_Read();
 			printf("0x%x ", ((uint8_t*) &id)[i]);
 		}
-		printf(" }\n");
+		printf("}\n");
 
 
 		DS18B20_Write(0x44);  // convert t
