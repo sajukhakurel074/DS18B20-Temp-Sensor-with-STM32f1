@@ -151,25 +151,31 @@ int main(void) {
 	}
 	printf("}\n");
 
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected\n");
+	}
+
+	Match_ROM(0);
+
+	DS18B20_Write(0x44, 0);		// Convert T
+	Presence = DS18B20_Start();
+	Match_ROM(0);
+
+	DS18B20_Write(0xBE, 0);		// Read Scratch pad
+	uint8_t data[9] = { 0 };
+
+	for (int i = 0; i < 9; i++) {
+		data[i] = DS18B20_Read(0);
+	}
+
+	TEMP = (data[1] << 8) | data[0];
+	Temperature = (float) TEMP / 16;
+
+	printf("Temperature = %f \n", Temperature);
+
 	while (1) {
-		Presence = DS18B20_Start();
-		if (Presence != 1) {
-			printf("Presence not detected\n");
-		}
 
-		Match_ROM(0);
-
-		DS18B20_Write(0xBE, 0);		// Read Scratch pad
-		uint8_t data[9] = { 0 };
-
-		for (int i = 0; i < 9; i++) {
-			data[i] = DS18B20_Read(0);
-		}
-
-		TEMP = (data[1] << 8) | data[0];
-		Temperature = (float) TEMP / 16;
-
-		printf("Temperature = %f \n", Temperature);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
