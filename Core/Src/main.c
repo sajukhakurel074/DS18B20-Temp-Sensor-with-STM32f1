@@ -135,7 +135,9 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	printf("\n\n\n\n\n\nFrom TEMP Sensor Test\r\n");
+
 	last_discrepancy = 0;
+
 	while (!Search_ROM()) {
 		if (FLAG_DONE == 1) {
 			break;
@@ -149,81 +151,28 @@ int main(void) {
 	}
 	printf("}\n");
 
-	Presence = DS18B20_Start();
-	if (Presence != 1) {
-		printf("Presence not detected\n");
-		return 0;
-	}
-	printf("Presence = %d\n", Presence);
-
-	Match_ROM(0);
-
-//	DS18B20_Write(0x44, 0);  // convert t
-
-	DS18B20_Write(0xBE, 0);
-	uint8_t data[9] = { 0 };
-
-	for (int i = 0; i < 9; i++) {
-		data[i] = DS18B20_Read(0);
-	}
-
-//	Temp_byte1 = DS18B20_Read(0);
-//	Temp_byte2 = DS18B20_Read(0);
-
-	Temp_byte1 = data[0];
-	Temp_byte2 = data[1];
-
-	TEMP = (Temp_byte2 << 8) | Temp_byte1;
-	Temperature = (float) TEMP / 16;
-
-	printf("Temperature = %f \n", Temperature);
-
 	while (1) {
+		Presence = DS18B20_Start();
+		if (Presence != 1) {
+			printf("Presence not detected\n");
+		}
+
+		Match_ROM(0);
+
+		DS18B20_Write(0xBE, 0);		// Read Scratch pad
+		uint8_t data[9] = { 0 };
+
+		for (int i = 0; i < 9; i++) {
+			data[i] = DS18B20_Read(0);
+		}
+
+		TEMP = (data[1] << 8) | data[0];
+		Temperature = (float) TEMP / 16;
+
+		printf("Temperature = %f \n", Temperature);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-
-//		int device = 1;
-//		for (int j = 0; j < 10 * 8;) {
-//
-//			printf("Device %d id : { ", device);
-//			for (int i = 0; i < 8; i++) {
-//				printf("0x%x ", ((uint8_t*) &ROM_id)[i + j]);
-//			}
-//			printf("}\n");
-//			j += 8;
-//			device++;
-//		}
-//			Presence = DS18B20_Start();
-//			printf("Presence = %d\n", Presence);
-//			HAL_Delay(1);
-//
-//			DS18B20_Write(0x33, 0);  // Read ROM command for single device
-//
-//			uint64_t id = 0;
-//			printf("Rom id = { ");
-//			for (int i = 0; i < 8; i++) {
-//				((uint8_t*) &id)[i] = DS18B20_Read(0);
-//				printf("0x%x ", ((uint8_t*) &id)[i]);
-//			}
-//			printf("}\n");
-//
-//			DS18B20_Write(0x44, 0);  // convert t
-//			HAL_Delay(800);
-//
-//			Presence = DS18B20_Start();
-//			printf("Presence2 = %d\n", Presence);
-//			HAL_Delay(1);
-//			DS18B20_Write(0xCC, 0);  // skip ROM
-//			DS18B20_Write(0xBE, 0);  // Read Scratch-pad
-//
-//			Temp_byte1 = DS18B20_Read(0);
-//			Temp_byte2 = DS18B20_Read(0);
-//
-//			TEMP = (Temp_byte2 << 8) | Temp_byte1;
-//			Temperature = (float) TEMP / 16;
-//
-//			printf("Temperature = %f \n", Temperature);
 	}
 	/* USER CODE END 3 */
 }
@@ -470,7 +419,7 @@ int Search_ROM() {
 		printf("Presence not detected\n");
 		return 0;
 	}
-	printf("Presence = %d\n", Presence);
+	//printf("Presence = %d\n", Presence);
 
 	if (FLAG_DONE == SET) {
 		return 0;
@@ -515,17 +464,17 @@ int Search_ROM() {
 			}
 
 			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
-
-			printf("bit counter = %d\n", bit_counter);
-			printf("counts = %d\n", counts);
-			printf("bit number = %d\n", bit_number);
+//
+//			printf("bit counter = %d\n", bit_counter);
+//			printf("counts = %d\n", counts);
+//			printf("bit number = %d\n", bit_number);
 
 			new_rom_id[counts] |= search_value << bit_counter;
 
 			if (bit_number % 8 == 0) {
-				printf("\n\n");
-				printf("0x%x\n", new_rom_id[counts]);
-				printf("\n\n");
+//				printf("\n\n");
+//				printf("0x%x\n", new_rom_id[counts]);
+//				printf("\n\n");
 				counts++;
 
 			}
@@ -536,13 +485,6 @@ int Search_ROM() {
 
 		}
 
-//		counts++;
-
-//		if (counts == 8)
-//			(*uint8_t)(&ROM_id)[count] |= new_rom_id; // Shift up to the current bit index to id array
-//		counts = 0;
-
-//		printf("bit_number = %d\n", bit_number);
 		bit_number++;
 	} while (bit_number < 65);
 
