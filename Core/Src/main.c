@@ -54,7 +54,20 @@ float Temperature;
 uint16_t TEMP;
 
 uint32_t ROM_id1, ROM_id2;
-uint64_t ROM_id;
+//uint64_t ROM_id;
+
+uint64_t ROM_id[10];
+uint8_t new_rom_id[8];
+uint8_t bit_id, bit_id_comp;
+uint8_t search_value;
+uint8_t bit_number, discrepancy_marker, last_discrepancy;
+
+uint8_t FLAG_DONE;
+uint8_t count = 0;
+uint8_t counts = 0;
+uint8_t bit_counter = 0;
+int last_zero;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,10 +77,14 @@ static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 int DS18B20_Start(void);
-void DS18B20_Write(uint8_t data);
-uint8_t DS18B20_Read(void);
+void DS18B20_Write(uint8_t data, uint8_t bit);
+uint8_t DS18B20_Read(uint8_t bit);
+void Match_ROM(int device);
+
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
+
+int Search_ROM();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -117,46 +134,96 @@ int main(void) {
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
+	printf("\n\n\n\n\n\nFrom TEMP Sensor Test\r\n");
+	last_discrepancy = 0;
+	while (!Search_ROM()) {
+		if (FLAG_DONE == 1) {
+			break;
+		}
+	}
+
+	printf("Number of devices on bus = %d\n", count);
+	printf("rom id == { ");
+	for (int i = 0; i < 8; i++) {
+		printf("0x%x ", new_rom_id[i]);
+	}
+	printf("}\n");
+
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected\n");
+		return 0;
+	}
+	printf("Presence = %d\n", Presence);
+
+	Match_ROM(0);
+
+//	DS18B20_Write(0x44, 0);  // convert t
+
+	DS18B20_Write(0xBE, 0);
+	uint8_t data[9] = { 0 };
+
+	for (int i = 0; i < 9; i++) {
+		data[i] = DS18B20_Read(0);
+	}
+
+//	Temp_byte1 = DS18B20_Read(0);
+//	Temp_byte2 = DS18B20_Read(0);
+
+	Temp_byte1 = data[0];
+	Temp_byte2 = data[1];
+
+	TEMP = (Temp_byte2 << 8) | Temp_byte1;
+	Temperature = (float) TEMP / 16;
+
+	printf("Temperature = %f \n", Temperature);
+
 	while (1) {
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-		printf("From TEMP Sensor Test\r\n");
-//		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-//		delay(1000); // (Max value to pass in function 0 - 1000) (min -> 1us to max -> 1ms)
 
-		Presence = DS18B20_Start();
-		printf("Presence = %d\n", Presence);
-		HAL_Delay(1);
-
-
-		DS18B20_Write(0x33);  // Read ROM command for single device
-
-		uint64_t id = 0;
-		printf("Rom id = { ");
-		for (int i = 0; i < 8; i++) {
-			((uint8_t*) &id)[i] = DS18B20_Read();
-			printf("0x%x ", ((uint8_t*) &id)[i]);
-		}
-		printf("}\n");
-
-
-		DS18B20_Write(0x44);  // convert t
-		HAL_Delay(800);
-
-		Presence = DS18B20_Start();
-		printf("Presence2 = %d\n", Presence);
-		HAL_Delay(1);
-		DS18B20_Write(0xCC);  // skip ROM
-		DS18B20_Write(0xBE);  // Read Scratch-pad
-
-		Temp_byte1 = DS18B20_Read();
-		Temp_byte2 = DS18B20_Read();
-
-		TEMP = (Temp_byte2 << 8) | Temp_byte1;
-		Temperature = (float) TEMP / 16;
-
-		printf("Temperature = %f \n", Temperature);
+//		int device = 1;
+//		for (int j = 0; j < 10 * 8;) {
+//
+//			printf("Device %d id : { ", device);
+//			for (int i = 0; i < 8; i++) {
+//				printf("0x%x ", ((uint8_t*) &ROM_id)[i + j]);
+//			}
+//			printf("}\n");
+//			j += 8;
+//			device++;
+//		}
+//			Presence = DS18B20_Start();
+//			printf("Presence = %d\n", Presence);
+//			HAL_Delay(1);
+//
+//			DS18B20_Write(0x33, 0);  // Read ROM command for single device
+//
+//			uint64_t id = 0;
+//			printf("Rom id = { ");
+//			for (int i = 0; i < 8; i++) {
+//				((uint8_t*) &id)[i] = DS18B20_Read(0);
+//				printf("0x%x ", ((uint8_t*) &id)[i]);
+//			}
+//			printf("}\n");
+//
+//			DS18B20_Write(0x44, 0);  // convert t
+//			HAL_Delay(800);
+//
+//			Presence = DS18B20_Start();
+//			printf("Presence2 = %d\n", Presence);
+//			HAL_Delay(1);
+//			DS18B20_Write(0xCC, 0);  // skip ROM
+//			DS18B20_Write(0xBE, 0);  // Read Scratch-pad
+//
+//			Temp_byte1 = DS18B20_Read(0);
+//			Temp_byte2 = DS18B20_Read(0);
+//
+//			TEMP = (Temp_byte2 << 8) | Temp_byte1;
+//			Temperature = (float) TEMP / 16;
+//
+//			printf("Temperature = %f \n", Temperature);
 	}
 	/* USER CODE END 3 */
 }
@@ -333,10 +400,16 @@ int DS18B20_Start(void) {
 	return Response;
 }
 
-void DS18B20_Write(uint8_t data) {
+void DS18B20_Write(uint8_t data, uint8_t bit) {
+	int loop = 0;
+	if (bit == 1) {
+		loop = 1; // Bit write
+	} else {
+		loop = 8; // Byte write
+	}
 	Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);  // set as output
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < loop; i++) {
 
 		if ((data & (1 << i)) != 0)  // if the bit is high
 				{
@@ -363,11 +436,18 @@ void DS18B20_Write(uint8_t data) {
 	}
 }
 
-uint8_t DS18B20_Read(void) {
+uint8_t DS18B20_Read(uint8_t bit) {
+	int loop = 0;
+	if (bit == 1) {  // Bit read
+		loop = 1;
+	} else {
+		loop = 8; // Byte read
+	}
+
 	uint8_t value = 0;
 	Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < loop; i++) {
 		Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);   // set as output
 
 		HAL_GPIO_WritePin(DS18B20_PORT, DS18B20_PIN, 0); // pull the data pin LOW
@@ -377,13 +457,127 @@ uint8_t DS18B20_Read(void) {
 		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH
 				{
 			value |= 1 << i;  // read = 1
-			//printf("value = %d\n", value);
 		}
 		delay(60);  // wait for 60 us
 	}
 	return value;
 }
 
+int Search_ROM() {
+
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected\n");
+		return 0;
+	}
+	printf("Presence = %d\n", Presence);
+
+	if (FLAG_DONE == SET) {
+		return 0;
+	}
+	HAL_Delay(1);
+	bit_number = 1;
+	last_zero = 0;
+
+	DS18B20_Write(0xF0, 0);  // Send Search ROM command
+	bit_counter = 0;
+
+	do {
+
+		bit_id = DS18B20_Read(1);				// read LSB bit value
+		bit_id_comp = DS18B20_Read(1);  // read LSB bit value complement
+
+		if (bit_id && bit_id_comp) { // 11 is the case for false value indicating no more devices
+			printf("No more devices\n");
+			return 0;
+		} else {
+			if (bit_id == bit_id_comp) // 00 indicates both 0 and 1 bit value at LSB of available devices
+					{
+				if (bit_number == last_discrepancy) {
+					search_value = 1;
+				} else {
+					if (bit_number > last_discrepancy) {
+						search_value = 0;
+//						last_zer = bit_number;
+//						if(last_zero < 9)
+//						{
+//
+//						}
+					} else {
+						if (bit_number == 0) {
+							discrepancy_marker = bit_number;
+						}
+					}
+				}
+
+			} else { // this indicates same 0 or 1 value at LSB of available devices
+				search_value = bit_id;   // setting either 0 or 1 search
+			}
+
+			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
+
+			printf("bit counter = %d\n", bit_counter);
+			printf("counts = %d\n", counts);
+			printf("bit number = %d\n", bit_number);
+
+			new_rom_id[counts] |= search_value << bit_counter;
+
+			if (bit_number % 8 == 0) {
+				printf("\n\n");
+				printf("0x%x\n", new_rom_id[counts]);
+				printf("\n\n");
+				counts++;
+
+			}
+			bit_counter++;
+			if (bit_counter >= 8) {
+				bit_counter = 0;
+			}
+
+		}
+
+//		counts++;
+
+//		if (counts == 8)
+//			(*uint8_t)(&ROM_id)[count] |= new_rom_id; // Shift up to the current bit index to id array
+//		counts = 0;
+
+//		printf("bit_number = %d\n", bit_number);
+		bit_number++;
+	} while (bit_number < 65);
+
+	last_discrepancy = discrepancy_marker;
+	if (last_discrepancy == 0) {
+		FLAG_DONE = SET;
+	} else {
+		printf("Next cycle\n");
+	}
+	count++;
+	return 1;
+}
+
+void Match_ROM(int device) {
+
+	DS18B20_Write(0x55, 0);
+	for (int i = 0; i < 8; i++) {
+		DS18B20_Write((new_rom_id)[i + device * 8], 0);
+	}
+
+}
+
+//uint8_t DS18B20_Read_bit(void) {
+//	uint8_t value = 0;
+//
+//	Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);   // set as output
+//	HAL_GPIO_WritePin(DS18B20_PORT, DS18B20_PIN, 0); // pull the data pin LOW
+//	delay(5);  // wait for 5 us
+//
+//	Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);  // set as input
+//	value = HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN);
+//	printf("value = %d\n", value);
+//
+//	return value;
+//}
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 	GPIO_InitStruct.Pin = GPIO_Pin;
