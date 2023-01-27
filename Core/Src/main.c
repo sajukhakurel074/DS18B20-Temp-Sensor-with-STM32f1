@@ -66,6 +66,7 @@ uint8_t FLAG_DONE;
 uint8_t count = 0;
 uint8_t counts = 0;
 uint8_t bit_counter = 0;
+//uint8_t device_number=0;
 int last_zero;
 
 /* USER CODE END PV */
@@ -138,13 +139,13 @@ int main(void) {
 
 	last_discrepancy = 0;
 
-	while (!Search_ROM()) {
+	while (Search_ROM()) {
 		if (FLAG_DONE == 1) {
 			break;
 		}
 	}
 
-	printf("Number of devices on bus = %d\n", count);
+	printf("Number of devices on bus = %u\n", count);
 	printf("rom id == { ");
 	for (int i = 0; i < 8; i++) {
 		printf("0x%x ", new_rom_id[i]);
@@ -425,15 +426,15 @@ int Search_ROM() {
 		printf("Presence not detected\n");
 		return 0;
 	}
-	//printf("Presence = %d\n", Presence);
 
 	if (FLAG_DONE == SET) {
 		return 0;
 	}
 	HAL_Delay(1);
+
 	bit_number = 1;
 	last_zero = 0;
-
+	discrepancy_marker = 0;
 	DS18B20_Write(0xF0, 0);  // Send Search ROM command
 	bit_counter = 0;
 
@@ -448,20 +449,24 @@ int Search_ROM() {
 		} else {
 			if (bit_id == bit_id_comp) // 00 indicates both 0 and 1 bit value at LSB of available devices
 					{
+				printf("discrepancy bit number=%d\n", bit_number);
 				if (bit_number == last_discrepancy) {
 					search_value = 1;
 				} else {
 					if (bit_number > last_discrepancy) {
+						printf("Search value set to 0\n");
 						search_value = 0;
-//						last_zer = bit_number;
-//						if(last_zero < 9)
-//						{
-//
-//						}
+						discrepancy_marker = bit_number;
+						printf("discrepancy marker = %d\n", bit_number);
+//						discrepancy_marker = bit_number;
 					} else {
-						if (bit_number == 0) {
+						printf("search value for else case = %d\n",
+								search_value);
+						if (search_value == 0) {
 							discrepancy_marker = bit_number;
+							printf("discrepancy marker = %d\n", bit_number);
 						}
+
 					}
 				}
 
@@ -471,9 +476,6 @@ int Search_ROM() {
 
 			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
 //
-//			printf("bit counter = %d\n", bit_counter);
-//			printf("counts = %d\n", counts);
-//			printf("bit number = %d\n", bit_number);
 
 			new_rom_id[counts] |= search_value << bit_counter;
 
@@ -492,15 +494,27 @@ int Search_ROM() {
 		}
 
 		bit_number++;
-	} while (bit_number < 65);
+
+//		printf("bit counter = %d\n", bit_counter);
+//		printf("counts = %d\n", counts);
+//		printf("bit number = %d\n", bit_number);
+
+	} while (bit_number < 64);
 
 	last_discrepancy = discrepancy_marker;
+
 	if (last_discrepancy == 0) {
 		FLAG_DONE = SET;
+		printf("Done Flag is SET\n");
 	} else {
 		printf("Next cycle\n");
 	}
-	count++;
+	count = count + 1;
+//	printf("count on first increment=%d\n", count);
+//	count =count+1;
+//	device_number=device_number+1;
+//	printf("Count on last =%d\n",device_number);
+//	printf(" main while run\n");
 	return 1;
 }
 
