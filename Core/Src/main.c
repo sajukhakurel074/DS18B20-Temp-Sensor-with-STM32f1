@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +67,7 @@ uint8_t count = 0;
 uint8_t counts = 0;
 uint8_t bit_counter = 0;
 //uint8_t device_number=0;
-int last_zero;
+//int last_zero;
 
 /* USER CODE END PV */
 
@@ -140,17 +140,30 @@ int main(void) {
 	last_discrepancy = 0;
 
 	while (Search_ROM()) {
+
+		memcpy((uint8_t*) &ROM_id[count - 1], new_rom_id, sizeof(new_rom_id));
+		printf("\n\n");
+		printf("Room id of the sensor=%d\n",count);
+		for (int i = 0; i < 8; i++) {
+			printf("0x%x ",((uint8_t*) &ROM_id[count - 1])[i]);
+		}
+		printf("\n\n");
+
 		if (FLAG_DONE == 1) {
 			break;
 		}
+		memset(new_rom_id, 0, sizeof(new_rom_id));
+
 	}
 
 	printf("Number of devices on bus = %u\n", count);
-	printf("rom id == { ");
-	for (int i = 0; i < 8; i++) {
-		printf("0x%x ", new_rom_id[i]);
-	}
-	printf("}\n");
+//	for (int i = 0; i < count; i++) {
+//		printf("ROM id of Device %d == { ", count + 1);
+//		for (int i = 0; i < 8; i++) {
+//			printf("0x%x ", new_rom_id[i]);
+//		}
+//		printf("}\n");
+//	}
 
 	Presence = DS18B20_Start();
 	if (Presence != 1) {
@@ -433,7 +446,8 @@ int Search_ROM() {
 	HAL_Delay(1);
 
 	bit_number = 1;
-	last_zero = 0;
+	counts = 0;
+//	last_zero = 0;
 	discrepancy_marker = 0;
 	DS18B20_Write(0xF0, 0);  // Send Search ROM command
 	bit_counter = 0;
@@ -452,6 +466,7 @@ int Search_ROM() {
 				printf("discrepancy bit number=%d\n", bit_number);
 				if (bit_number == last_discrepancy) {
 					search_value = 1;
+					printf("Search value = 1\n");
 				} else {
 					if (bit_number > last_discrepancy) {
 						printf("Search value set to 0\n");
@@ -473,16 +488,16 @@ int Search_ROM() {
 			} else { // this indicates same 0 or 1 value at LSB of available devices
 				search_value = bit_id;   // setting either 0 or 1 search
 			}
-
+//			printf("%d\n", search_value);
 			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
-//
-
 			new_rom_id[counts] |= search_value << bit_counter;
+//			if (search_value == 1) {
+//				new_rom_id[counts] |= search_value << bit_counter;
+//			}else if(search_value==0){
+//				new_rom_id[counts] |= search_value << bit_counter;
+//			}
 
 			if (bit_number % 8 == 0) {
-//				printf("\n\n");
-//				printf("0x%x\n", new_rom_id[counts]);
-//				printf("\n\n");
 				counts++;
 
 			}
@@ -494,12 +509,12 @@ int Search_ROM() {
 		}
 
 		bit_number++;
-
+//
 //		printf("bit counter = %d\n", bit_counter);
 //		printf("counts = %d\n", counts);
 //		printf("bit number = %d\n", bit_number);
 
-	} while (bit_number < 64);
+	} while (bit_number < 65);
 
 	last_discrepancy = discrepancy_marker;
 
