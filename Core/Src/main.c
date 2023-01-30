@@ -41,7 +41,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 
@@ -75,12 +75,17 @@ uint8_t bit_counter = 0;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
+int Temp_init();
+
 int DS18B20_Start(void);
 void DS18B20_Write(uint8_t data, uint8_t bit);
 uint8_t DS18B20_Read(uint8_t bit);
+
+void Find_Temp_devices();
 void Match_ROM(int device);
+void Read_Temp(int select);
 
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
@@ -91,8 +96,8 @@ int Search_ROM();
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void delay(uint32_t delay) {
-	__HAL_TIM_SET_COUNTER(&htim1, 0);
-	while (__HAL_TIM_GET_COUNTER(&htim1) < delay) {
+	__HAL_TIM_SET_COUNTER(&htim2, 0);
+	while (__HAL_TIM_GET_COUNTER(&htim2) < delay) {
 
 	}
 
@@ -127,68 +132,26 @@ int main(void) {
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
 	MX_USART1_UART_Init();
-	MX_TIM1_Init();
+	MX_TIM2_Init();
 	/* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start(&htim1);
 
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
-	printf("\n\n\n\n\n\nFrom TEMP Sensor Test\r\n");
 
-	last_discrepancy = 0;
-
-	while (Search_ROM()) {
-
-		memcpy((uint8_t*) &ROM_id[count - 1], new_rom_id, sizeof(new_rom_id));
-		printf("\n\n");
-		printf("Room id of the sensor=%d\n",count);
-		for (int i = 0; i < 8; i++) {
-			printf("0x%x ",((uint8_t*) &ROM_id[count - 1])[i]);
-		}
-		printf("\n\n");
-
-		if (FLAG_DONE == 1) {
-			break;
-		}
-		memset(new_rom_id, 0, sizeof(new_rom_id));
-
+	if (Temp_init() != 1) {
+		printf("Temp Sensor Initialization failed\n");
 	}
 
+	Find_Temp_devices();
 	printf("Number of devices on bus = %u\n", count);
-//	for (int i = 0; i < count; i++) {
-//		printf("ROM id of Device %d == { ", count + 1);
-//		for (int i = 0; i < 8; i++) {
-//			printf("0x%x ", new_rom_id[i]);
-//		}
-//		printf("}\n");
-//	}
-
-	Presence = DS18B20_Start();
-	if (Presence != 1) {
-		printf("Presence not detected\n");
-	}
-
-	Match_ROM(0);
-
-	DS18B20_Write(0x44, 0);		// Convert T
-	Presence = DS18B20_Start();
-	Match_ROM(0);
-
-	DS18B20_Write(0xBE, 0);		// Read Scratch pad
-	uint8_t data[9] = { 0 };
-
-	for (int i = 0; i < 9; i++) {
-		data[i] = DS18B20_Read(0);
-	}
-
-	TEMP = (data[1] << 8) | data[0];
-	Temperature = (float) TEMP / 16;
-
-	printf("Temperature = %f \n", Temperature);
 
 	while (1) {
+		printf("\n\n");
+		Read_Temp(1);
+		Read_Temp(2);
+		HAL_Delay(1000);
 
 		/* USER CODE END WHILE */
 
@@ -234,45 +197,44 @@ void SystemClock_Config(void) {
 }
 
 /**
- * @brief TIM1 Initialization Function
+ * @brief TIM2 Initialization Function
  * @param None
  * @retval None
  */
-static void MX_TIM1_Init(void) {
+static void MX_TIM2_Init(void) {
 
-	/* USER CODE BEGIN TIM1_Init 0 */
+	/* USER CODE BEGIN TIM2_Init 0 */
 
-	/* USER CODE END TIM1_Init 0 */
+	/* USER CODE END TIM2_Init 0 */
 
 	TIM_ClockConfigTypeDef sClockSourceConfig = { 0 };
 	TIM_MasterConfigTypeDef sMasterConfig = { 0 };
 
-	/* USER CODE BEGIN TIM1_Init 1 */
+	/* USER CODE BEGIN TIM2_Init 1 */
 
-	/* USER CODE END TIM1_Init 1 */
-	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = 72 - 1;
-	htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim1.Init.Period = 1000;
-	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim1.Init.RepetitionCounter = 0;
-	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
+	/* USER CODE END TIM2_Init 1 */
+	htim2.Instance = TIM2;
+	htim2.Init.Prescaler = 72 - 1;
+	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim2.Init.Period = 1000;
+	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
 		Error_Handler();
 	}
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK) {
+	if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
 		Error_Handler();
 	}
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig)
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig)
 			!= HAL_OK) {
 		Error_Handler();
 	}
-	/* USER CODE BEGIN TIM1_Init 2 */
+	/* USER CODE BEGIN TIM2_Init 2 */
 
-	/* USER CODE END TIM1_Init 2 */
+	/* USER CODE END TIM2_Init 2 */
 
 }
 
@@ -348,6 +310,18 @@ int fputc(int ch, FILE *f)
 {
 	HAL_UART_Transmit(&huart1, (uint8_t*) &ch, 1, HAL_MAX_DELAY);
 	return ch;
+}
+
+int Temp_init() {
+	printf("\n\n\n\n\n\nFrom TEMP Sensor Test\r\n");
+	HAL_TIM_Base_Start(&htim2);  // Start the timer
+
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected\n");
+		return 0;
+	}
+	return 1;
 }
 
 int DS18B20_Start(void) {
@@ -447,7 +421,6 @@ int Search_ROM() {
 
 	bit_number = 1;
 	counts = 0;
-//	last_zero = 0;
 	discrepancy_marker = 0;
 	DS18B20_Write(0xF0, 0);  // Send Search ROM command
 	bit_counter = 0;
@@ -463,23 +436,16 @@ int Search_ROM() {
 		} else {
 			if (bit_id == bit_id_comp) // 00 indicates both 0 and 1 bit value at LSB of available devices
 					{
-				printf("discrepancy bit number=%d\n", bit_number);
 				if (bit_number == last_discrepancy) {
 					search_value = 1;
-					printf("Search value = 1\n");
 				} else {
 					if (bit_number > last_discrepancy) {
-						printf("Search value set to 0\n");
 						search_value = 0;
 						discrepancy_marker = bit_number;
-						printf("discrepancy marker = %d\n", bit_number);
-//						discrepancy_marker = bit_number;
+
 					} else {
-						printf("search value for else case = %d\n",
-								search_value);
 						if (search_value == 0) {
 							discrepancy_marker = bit_number;
-							printf("discrepancy marker = %d\n", bit_number);
 						}
 
 					}
@@ -488,14 +454,8 @@ int Search_ROM() {
 			} else { // this indicates same 0 or 1 value at LSB of available devices
 				search_value = bit_id;   // setting either 0 or 1 search
 			}
-//			printf("%d\n", search_value);
 			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
 			new_rom_id[counts] |= search_value << bit_counter;
-//			if (search_value == 1) {
-//				new_rom_id[counts] |= search_value << bit_counter;
-//			}else if(search_value==0){
-//				new_rom_id[counts] |= search_value << bit_counter;
-//			}
 
 			if (bit_number % 8 == 0) {
 				counts++;
@@ -509,10 +469,6 @@ int Search_ROM() {
 		}
 
 		bit_number++;
-//
-//		printf("bit counter = %d\n", bit_counter);
-//		printf("counts = %d\n", counts);
-//		printf("bit number = %d\n", bit_number);
 
 	} while (bit_number < 65);
 
@@ -520,16 +476,10 @@ int Search_ROM() {
 
 	if (last_discrepancy == 0) {
 		FLAG_DONE = SET;
-		printf("Done Flag is SET\n");
-	} else {
-		printf("Next cycle\n");
+//		printf("Done Flag is SET\n");
 	}
 	count = count + 1;
-//	printf("count on first increment=%d\n", count);
-//	count =count+1;
-//	device_number=device_number+1;
-//	printf("Count on last =%d\n",device_number);
-//	printf(" main while run\n");
+
 	return 1;
 }
 
@@ -537,24 +487,55 @@ void Match_ROM(int device) {
 
 	DS18B20_Write(0x55, 0);
 	for (int i = 0; i < 8; i++) {
-		DS18B20_Write((new_rom_id)[i + device * 8], 0);
+		DS18B20_Write(((uint8_t*) &ROM_id[device - 1])[i], 0);
 	}
 
 }
 
-//uint8_t DS18B20_Read_bit(void) {
-//	uint8_t value = 0;
-//
-//	Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);   // set as output
-//	HAL_GPIO_WritePin(DS18B20_PORT, DS18B20_PIN, 0); // pull the data pin LOW
-//	delay(5);  // wait for 5 us
-//
-//	Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);  // set as input
-//	value = HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN);
-//	printf("value = %d\n", value);
-//
-//	return value;
-//}
+void Read_Temp(int select) {
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected\n");
+	}
+
+	Match_ROM(select);
+	DS18B20_Write(0x44, 0);		// Convert T
+	Presence = DS18B20_Start();
+
+	Match_ROM(select);
+	DS18B20_Write(0xBE, 0);		// Read Scratch pad
+	uint8_t data[9] = { 0 };
+
+	for (int i = 0; i < 9; i++) {
+		data[i] = DS18B20_Read(0);
+	}
+
+	TEMP = (data[1] << 8) | data[0];
+	Temperature = (float) TEMP / 16;
+
+	printf("Temperature of device %d = %f \n", select, Temperature);
+}
+
+void Find_Temp_devices() {
+	last_discrepancy = 0;
+	while (Search_ROM()) {
+
+		memcpy((uint8_t*) &ROM_id[count - 1], new_rom_id, sizeof(new_rom_id));
+//		printf("\n\n");
+		printf("Room id of the sensor= %d\n{ ", count);
+		for (int i = 0; i < 8; i++) {
+			printf("0x%x ", ((uint8_t*) &ROM_id[count - 1])[i]);
+		}
+		printf("}\n\n");
+
+		if (FLAG_DONE == 1) {
+			break;
+		}
+		memset(new_rom_id, 0, sizeof(new_rom_id));
+
+	}
+
+}
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 	GPIO_InitStruct.Pin = GPIO_Pin;
