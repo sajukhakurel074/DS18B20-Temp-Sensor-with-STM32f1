@@ -29,6 +29,20 @@
 #define MAX_DEVICE 5
 #define UPPER_TH 85
 #define LOWER_TH 5
+
+#define SEARCH_ROM		0xF0
+#define READ_ROM		0x33
+#define MATCH_ROM 		0x55
+#define SKIP_ROM		0xCC
+#define ALARM_ROM		0xEC
+
+#define CONVERT_S		0x44
+#define WRITE_S			0x4E
+#define READ_S			0xBE
+#define COPY_S			0x48
+#define RECALL_S		0xB8
+#define READ_POWER		0xB4
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,9 +70,10 @@ float Temperature;
 uint16_t TEMP;
 
 uint32_t ROM_id1, ROM_id2;
-//uint64_t ROM_id;
 
 uint64_t ROM_id[MAX_DEVICE];
+uint64_t ROM_alarm_id[MAX_DEVICE];
+
 uint8_t new_rom_id[8];
 uint8_t bit_id, bit_id_comp;
 uint8_t search_value;
@@ -93,7 +108,8 @@ void Set_Threshold(int upper, int lower, int device);
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 
-int Search_ROM();
+int Search_ROM(int cmd);
+void Check_Alarm();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -148,7 +164,7 @@ int main(void) {
 	}
 
 	Find_Temp_devices();
-	printf("Number of devices on bus = %u\n", count);
+	printf("Number of devices on bus = %d\n", count);
 
 	Set_Threshold(30, 15, 1);
 	Set_Threshold(30, 15, 2);
@@ -159,6 +175,8 @@ int main(void) {
 		Read_Temp(2);
 		HAL_Delay(1000);
 
+		Check_Alarm();
+		printf("Number of devices with alarm triggered= %d\n", count);
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -413,7 +431,7 @@ uint8_t DS18B20_Read(uint8_t bit) {
 	return value;
 }
 
-int Search_ROM() {
+int Search_ROM(int cmd) {
 
 	Presence = DS18B20_Start();
 	if (Presence != 1) {
@@ -429,7 +447,7 @@ int Search_ROM() {
 	bit_number = 1;
 	counts = 0;
 	discrepancy_marker = 0;
-	DS18B20_Write(0xF0, 0);  // Send Search ROM command
+	DS18B20_Write(cmd, 0);  // Send ROM command
 	bit_counter = 0;
 
 	do {
@@ -483,7 +501,6 @@ int Search_ROM() {
 
 	if (last_discrepancy == 0) {
 		FLAG_DONE = SET;
-//		printf("Done Flag is SET\n");
 	}
 	count = count + 1;
 
@@ -492,7 +509,7 @@ int Search_ROM() {
 
 void Match_ROM(int device) {
 
-	DS18B20_Write(0x55, 0);
+	DS18B20_Write(MATCH_ROM, 0);
 	for (int i = 0; i < 8; i++) {
 		DS18B20_Write(((uint8_t*) &ROM_id[device - 1])[i], 0);
 	}
@@ -512,11 +529,11 @@ void Read_Temp(int select) {
 	}
 
 	Match_ROM(select);
-	DS18B20_Write(0x44, 0);		// Convert T
+	DS18B20_Write(CONVERT_S, 0);		// Convert T
 	Presence = DS18B20_Start();
 
 	Match_ROM(select);
-	DS18B20_Write(0xBE, 0);		// Read Scratch pad
+	DS18B20_Write(READ_S, 0);		// Read Scratch pad
 
 	for (int i = 0; i < 9; i++) {
 		data[i] = DS18B20_Read(0);
@@ -561,7 +578,7 @@ void Read_Temp(int select) {
 
 void Find_Temp_devices() {
 	last_discrepancy = 0;
-	while (Search_ROM()) {
+	while (Search_ROM(SEARCH_ROM)) {
 
 		memcpy((uint8_t*) &ROM_id[count - 1], new_rom_id, sizeof(new_rom_id));
 		printf("Room id of the sensor= %d\n{ ", count);
@@ -580,7 +597,6 @@ void Find_Temp_devices() {
 }
 
 void Set_Threshold(int upper, int lower, int device) {
-
 	int TH, TL, Resolution;
 
 	Presence = DS18B20_Start();
@@ -590,7 +606,7 @@ void Set_Threshold(int upper, int lower, int device) {
 	}
 
 	Match_ROM(device);
-	DS18B20_Write(0xBE, 0);		// Read Scratch pad
+	DS18B20_Write(READ_S, 0);		// Read Scratch pad
 
 	DS18B20_Read(0);  // Skip first two bytes
 	DS18B20_Read(0);
@@ -603,7 +619,7 @@ void Set_Threshold(int upper, int lower, int device) {
 	printf("Before Set Lower TL = %d\n", TL);
 	printf("Before Set Config = %d\n", Resolution);
 
-	if (upper > 125) {// Set possible maximum and minimum values if set value exceeds limit
+	if (upper > 125) { // Set possible maximum and minimum values if set value exceeds limit
 		upper = 125;
 	}
 	if (lower < -55) {
@@ -617,11 +633,33 @@ void Set_Threshold(int upper, int lower, int device) {
 	}
 
 	Match_ROM(device);
-	DS18B20_Write(0x4E, 0);		// Write Scratch pad
+	DS18B20_Write(WRITE_S, 0);		// Write Scratch pad
 
 	DS18B20_Write(upper, 0);		// Write upper threshold Scratch pad
 	DS18B20_Write(lower, 0);		// Write lower threshold  Scratch pad
 	DS18B20_Write(Resolution, 0);		// Write config Scratch pad
+}
+
+void Check_Alarm() {
+	last_discrepancy = 0;
+	count = 0;
+	FLAG_DONE = RESET;
+	while (Search_ROM(ALARM_ROM)) {
+
+		memcpy((uint8_t*) &ROM_alarm_id[count - 1], new_rom_id, sizeof(new_rom_id));
+		printf("Room id of the sensor= %d\n{ ", count);
+		for (int i = 0; i < 8; i++) {
+			printf("0x%x ", ((uint8_t*) &ROM_alarm_id[count - 1])[i]);
+		}
+		printf("}\n\n");
+
+		if (FLAG_DONE == 1) {
+			break;
+		}
+		memset(new_rom_id, 0, sizeof(new_rom_id));
+
+	}
+
 }
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
