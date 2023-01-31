@@ -66,7 +66,7 @@ uint8_t Temp_byte1;
 uint8_t Temp_byte2;
 
 int Presence;
-float Temperature;
+//float Temperature;
 uint16_t TEMP;
 
 uint32_t ROM_id1, ROM_id2;
@@ -110,6 +110,7 @@ void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 
 int Search_ROM(int cmd);
 void Check_Alarm();
+uint8_t CRC_CHECK(uint8_t *data, int len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -170,13 +171,15 @@ int main(void) {
 	Set_Threshold(30, 15, 2);
 
 	while (1) {
-		printf("\n\n");
+
 		Read_Temp(1);
+		printf("\n");
 		Read_Temp(2);
 		HAL_Delay(1000);
 
 		Check_Alarm();
 		printf("Number of devices with alarm triggered= %d\n", count);
+		printf("\n\n");
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
@@ -519,8 +522,9 @@ void Match_ROM(int device) {
 void Read_Temp(int select) {
 
 	uint8_t data[9] = { 0 };
-	int factor;
 	int neg = 0;
+	int bit8_value;
+	float decimal;
 
 	Presence = DS18B20_Start();
 	if (Presence != 1) {
@@ -530,6 +534,7 @@ void Read_Temp(int select) {
 
 	Match_ROM(select);
 	DS18B20_Write(CONVERT_S, 0);		// Convert T
+	HAL_Delay(10);						// Delay for Conversion
 	Presence = DS18B20_Start();
 
 	Match_ROM(select);
@@ -539,9 +544,11 @@ void Read_Temp(int select) {
 		data[i] = DS18B20_Read(0);
 	}
 
-	printf("Read Upper TH = %d\n", data[2]);
-	printf("Read Lower TL = %d\n", data[3]);
-	printf("Read Config = %d\n", data[4]);
+	if(data[8] != CRC_CHECK(data, 8))
+	{
+		printf("CRC Check Failed\n");
+		return;
+	}
 
 	TEMP = (data[1] << 8) | data[0];
 
@@ -552,28 +559,35 @@ void Read_Temp(int select) {
 		neg = 1;
 	}
 
+	bit8_value = TEMP >> 4;
+	bit8_value |= ((TEMP >> 8) & 0x7) << 4;
+
 	switch (data[4]) {
 	case 31:
-		factor = 2;
+		decimal = (TEMP >> 3) & 0x01;
+		decimal = decimal / 2;
 		break;
 	case 63:
-		factor = 4;
+		decimal = (TEMP >> 2) & 0x03;
+		decimal = decimal / 4;
 		break;
 	case 95:
-		factor = 8;
+		decimal = (TEMP >> 1) & 0x07;
+		decimal = decimal / 8;
 		break;
 	case 127:
-		factor = 16;
+		decimal = TEMP & 0x0F;
+		decimal = decimal / 16;
 		break;
 	default:
 		break;
 	}
 
-	Temperature = (float) TEMP / factor;
+	decimal = bit8_value + decimal;
 	if (neg) {
-		Temperature = 0 - Temperature;    // negate the temperature if is -ve;
+		decimal = 0 - decimal;    // negate the temperature if is -ve;
 	}
-	printf("Temperature of device %d = %f \n", select, Temperature);
+	printf("Temperature of device %d = %f \n", select, decimal);
 }
 
 void Find_Temp_devices() {
@@ -615,8 +629,8 @@ void Set_Threshold(int upper, int lower, int device) {
 	TL = DS18B20_Read(0);
 	Resolution = DS18B20_Read(0);
 
-	printf("Before Set Upper TH = %d\n", TH);
-	printf("Before Set Lower TL = %d\n", TL);
+	printf("Before Set Upper TH of device %d = %d\n", device, TH);
+	printf("Before Set Lower TL of device %d = %d\n", device, TL);
 	printf("Before Set Config = %d\n", Resolution);
 
 	if (upper > 125) { // Set possible maximum and minimum values if set value exceeds limit
@@ -646,7 +660,8 @@ void Check_Alarm() {
 	FLAG_DONE = RESET;
 	while (Search_ROM(ALARM_ROM)) {
 
-		memcpy((uint8_t*) &ROM_alarm_id[count - 1], new_rom_id, sizeof(new_rom_id));
+		memcpy((uint8_t*) &ROM_alarm_id[count - 1], new_rom_id,
+				sizeof(new_rom_id));
 		printf("Room id of the sensor= %d\n{ ", count);
 		for (int i = 0; i < 8; i++) {
 			printf("0x%x ", ((uint8_t*) &ROM_alarm_id[count - 1])[i]);
@@ -660,6 +675,29 @@ void Check_Alarm() {
 
 	}
 
+}
+
+uint8_t CRC_CHECK(uint8_t *data, int len)
+{
+	 uint8_t crc = 0, inbyte, i, mix;
+
+	    while ( len-- )
+	    {
+	        inbyte = *data++;
+	        for ( i = 8; i; i-- )
+	        {
+	            mix = ( crc ^ inbyte ) & 0x01;
+	            crc >>= 1;
+	            if ( mix )
+	            {
+	                crc ^= 0x8C;
+	            }
+	            inbyte >>= 1;
+	        }
+	    }
+
+	    /* Return calculated CRC */
+	    return crc;
 }
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
