@@ -26,7 +26,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#define MAX_DEVICE 5
+#define UPPER_TH 85
+#define LOWER_TH 5
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,7 +58,7 @@ uint16_t TEMP;
 uint32_t ROM_id1, ROM_id2;
 //uint64_t ROM_id;
 
-uint64_t ROM_id[10];
+uint64_t ROM_id[MAX_DEVICE];
 uint8_t new_rom_id[8];
 uint8_t bit_id, bit_id_comp;
 uint8_t search_value;
@@ -86,6 +88,7 @@ uint8_t DS18B20_Read(uint8_t bit);
 void Find_Temp_devices();
 void Match_ROM(int device);
 void Read_Temp(int select);
+void Set_Threshold(int upper, int lower, int device);
 
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
 void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
@@ -146,6 +149,9 @@ int main(void) {
 
 	Find_Temp_devices();
 	printf("Number of devices on bus = %u\n", count);
+
+	Set_Threshold(30, 15, 1);
+	Set_Threshold(30, 15, 2);
 
 	while (1) {
 		printf("\n\n");
@@ -397,6 +403,7 @@ uint8_t DS18B20_Read(uint8_t bit) {
 		delay(5);  // wait for 5 us
 
 		Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);  // set as input
+
 		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH
 				{
 			value |= 1 << i;  // read = 1
@@ -493,9 +500,15 @@ void Match_ROM(int device) {
 }
 
 void Read_Temp(int select) {
+
+	uint8_t data[9] = { 0 };
+	int factor;
+	int neg = 0;
+
 	Presence = DS18B20_Start();
 	if (Presence != 1) {
-		printf("Presence not detected\n");
+		printf("Presence not detected for reading temp\n");
+		return;
 	}
 
 	Match_ROM(select);
@@ -504,15 +517,45 @@ void Read_Temp(int select) {
 
 	Match_ROM(select);
 	DS18B20_Write(0xBE, 0);		// Read Scratch pad
-	uint8_t data[9] = { 0 };
 
 	for (int i = 0; i < 9; i++) {
 		data[i] = DS18B20_Read(0);
 	}
 
-	TEMP = (data[1] << 8) | data[0];
-	Temperature = (float) TEMP / 16;
+	printf("Read Upper TH = %d\n", data[2]);
+	printf("Read Lower TL = %d\n", data[3]);
+	printf("Read Config = %d\n", data[4]);
 
+	TEMP = (data[1] << 8) | data[0];
+
+	if (TEMP & 0x8000)   //check of the temperature is negative
+			{
+		printf("Temperature is in -ve\n");
+		TEMP = ~TEMP + 1;       // 2's complement in case of -ve temperature
+		neg = 1;
+	}
+
+	switch (data[4]) {
+	case 31:
+		factor = 2;
+		break;
+	case 63:
+		factor = 4;
+		break;
+	case 95:
+		factor = 8;
+		break;
+	case 127:
+		factor = 16;
+		break;
+	default:
+		break;
+	}
+
+	Temperature = (float) TEMP / factor;
+	if (neg) {
+		Temperature = 0 - Temperature;    // negate the temperature if is -ve;
+	}
 	printf("Temperature of device %d = %f \n", select, Temperature);
 }
 
@@ -521,7 +564,6 @@ void Find_Temp_devices() {
 	while (Search_ROM()) {
 
 		memcpy((uint8_t*) &ROM_id[count - 1], new_rom_id, sizeof(new_rom_id));
-//		printf("\n\n");
 		printf("Room id of the sensor= %d\n{ ", count);
 		for (int i = 0; i < 8; i++) {
 			printf("0x%x ", ((uint8_t*) &ROM_id[count - 1])[i]);
@@ -535,6 +577,51 @@ void Find_Temp_devices() {
 
 	}
 
+}
+
+void Set_Threshold(int upper, int lower, int device) {
+
+	int TH, TL, Resolution;
+
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected for setting Thresholds\n");
+		return;
+	}
+
+	Match_ROM(device);
+	DS18B20_Write(0xBE, 0);		// Read Scratch pad
+
+	DS18B20_Read(0);  // Skip first two bytes
+	DS18B20_Read(0);
+
+	TH = DS18B20_Read(0);
+	TL = DS18B20_Read(0);
+	Resolution = DS18B20_Read(0);
+
+	printf("Before Set Upper TH = %d\n", TH);
+	printf("Before Set Lower TL = %d\n", TL);
+	printf("Before Set Config = %d\n", Resolution);
+
+	if (upper > 125) {// Set possible maximum and minimum values if set value exceeds limit
+		upper = 125;
+	}
+	if (lower < -55) {
+		lower = -55;
+	}
+
+	Presence = DS18B20_Start();
+	if (Presence != 1) {
+		printf("Presence not detected for setting Thresholds\n");
+		return;
+	}
+
+	Match_ROM(device);
+	DS18B20_Write(0x4E, 0);		// Write Scratch pad
+
+	DS18B20_Write(upper, 0);		// Write upper threshold Scratch pad
+	DS18B20_Write(lower, 0);		// Write lower threshold  Scratch pad
+	DS18B20_Write(Resolution, 0);		// Write config Scratch pad
 }
 void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
