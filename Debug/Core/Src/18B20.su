@@ -1,0 +1,14 @@
+../Core/Src/18B20.c:29:5:Temp_init	8	static
+../Core/Src/18B20.c:41:5:DS18B20_Start	16	static
+../Core/Src/18B20.c:60:6:DS18B20_Write	24	static
+../Core/Src/18B20.c:96:9:DS18B20_Read	32	static
+../Core/Src/18B20.c:124:5:Search_ROM	16	static
+../Core/Src/18B20.c:200:6:Match_ROM	24	static
+../Core/Src/18B20.c:209:6:Read_Temp	56	static
+../Core/Src/18B20.c:279:6:Find_Temp_devices	16	static
+../Core/Src/18B20.c:299:6:Set_Threshold	40	static
+../Core/Src/18B20.c:343:6:Check_Alarm	16	static
+../Core/Src/18B20.c:366:9:CRC_CHECK	24	static
+../Core/Src/18B20.c:384:6:Set_Pin_Output	32	static
+../Core/Src/18B20.c:392:6:Set_Pin_Input	32	static
+../Core/Src/18B20.c:400:6:delay	16	static
