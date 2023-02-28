@@ -6,9 +6,9 @@
 ../Core/Src/18B20.c:200:6:Match_ROM	24	static
 ../Core/Src/18B20.c:209:6:Read_Temp	56	static
 ../Core/Src/18B20.c:279:6:Find_Temp_devices	16	static
-../Core/Src/18B20.c:299:6:Set_Threshold	40	static
-../Core/Src/18B20.c:343:6:Check_Alarm	16	static
-../Core/Src/18B20.c:366:9:CRC_CHECK	24	static
-../Core/Src/18B20.c:384:6:Set_Pin_Output	32	static
-../Core/Src/18B20.c:392:6:Set_Pin_Input	32	static
-../Core/Src/18B20.c:400:6:delay	16	static
+../Core/Src/18B20.c:304:6:Set_Threshold	40	static
+../Core/Src/18B20.c:348:6:Check_Alarm	16	static
+../Core/Src/18B20.c:371:9:CRC_CHECK	24	static
+../Core/Src/18B20.c:389:6:Set_Pin_Output	32	static
+../Core/Src/18B20.c:397:6:Set_Pin_Input	32	static
+../Core/Src/18B20.c:405:6:delay	16	static

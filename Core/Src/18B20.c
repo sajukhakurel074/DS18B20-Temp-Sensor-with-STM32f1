@@ -291,8 +291,13 @@ void Find_Temp_devices() {
 			break;
 		}
 		memset(new_rom_id, 0, sizeof(new_rom_id));
-
+		if(((uint8_t*) &ROM_id[count - 1])[0] !=  DS18B20_FAMILY_CODE)
+		{
+			printf("Wrong value read \n");
+			break;
+		}
 	}
+
 
 }
 

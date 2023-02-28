@@ -29,7 +29,7 @@
 #define DS18B20_PORT GPIOB   		// need to change
 #define DS18B20_PIN GPIO_PIN_1      // need to change according requirement
 
-
+#define DS18B20_FAMILY_CODE             0x28
 
 int Temp_init(void);
 int DS18B20_Start(void);
