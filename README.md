@@ -18,15 +18,11 @@ For CRC calculation CRC-8-Maxim algotithm is used.
 
 
 #Hardware Connections 
----------------------------------
-_________________________________
+
 |   PIN         | Connections   |
-|_______________|_______________|
+---------------------------------
 |   Power       |   3V3         |
-|               |               |
 |   GND         |   GND         |
-|               |               |
 |   Data/Signal |   GPIO PIN    |
-|_______________|_______________|
 
 
