@@ -1466,7 +1466,7 @@ void DS18B20_Write(uint8_t data, uint8_t bit) {
 		{
 			// write 0
 
-			Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);
+			Set_Pin_Output(DS18B20_PORT, DS18B20_PIN); // set as output
  8001056:	2102      	movs	r1, #2
  8001058:	480d      	ldr	r0, [pc, #52]	; (8001090 <DS18B20_Write+0xa4>)
  800105a:	f000 fbe5 	bl	8001828 <Set_Pin_Output>
@@ -1479,7 +1479,7 @@ void DS18B20_Write(uint8_t data, uint8_t bit) {
  8001068:	203c      	movs	r0, #60	; 0x3c
  800106a:	f000 fc17 	bl	800189c <delay>
 
-			Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);
+			Set_Pin_Input(DS18B20_PORT, DS18B20_PIN); // set as input
  800106e:	2102      	movs	r1, #2
  8001070:	4807      	ldr	r0, [pc, #28]	; (8001090 <DS18B20_Write+0xa4>)
  8001072:	f000 fbf6 	bl	8001862 <Set_Pin_Input>
@@ -1558,7 +1558,7 @@ uint8_t DS18B20_Read(uint8_t bit) {
  80010de:	4811      	ldr	r0, [pc, #68]	; (8001124 <DS18B20_Read+0x90>)
  80010e0:	f000 fbbf 	bl	8001862 <Set_Pin_Input>
 
-		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH
+		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH store 1 in current index by shifting
  80010e4:	2102      	movs	r1, #2
  80010e6:	480f      	ldr	r0, [pc, #60]	; (8001124 <DS18B20_Read+0x90>)
  80010e8:	f001 fa36 	bl	8002558 <HAL_GPIO_ReadPin>
@@ -1605,7 +1605,7 @@ int Search_ROM(int cmd) {
  800112c:	af00      	add	r7, sp, #0
  800112e:	6078      	str	r0, [r7, #4]
 
-	Presence = DS18B20_Start();
+	Presence = DS18B20_Start(); // Before search, make sure the sensor is detectable
  8001130:	f7ff ff2a 	bl	8000f88 <DS18B20_Start>
  8001134:	4603      	mov	r3, r0
  8001136:	4a61      	ldr	r2, [pc, #388]	; (80012bc <Search_ROM+0x194>)
@@ -1623,7 +1623,7 @@ int Search_ROM(int cmd) {
  800114a:	e0b3      	b.n	80012b4 <Search_ROM+0x18c>
 	}
 
-	if (FLAG_DONE == SET) {
+	if (FLAG_DONE == SET) {	// if all devices are detected, the flag is SET
  800114c:	4b5d      	ldr	r3, [pc, #372]	; (80012c4 <Search_ROM+0x19c>)
  800114e:	781b      	ldrb	r3, [r3, #0]
  8001150:	2b01      	cmp	r3, #1
@@ -1676,7 +1676,7 @@ int Search_ROM(int cmd) {
  800119a:	4b50      	ldr	r3, [pc, #320]	; (80012dc <Search_ROM+0x1b4>)
  800119c:	701a      	strb	r2, [r3, #0]
 
-		if (bit_id && bit_id_comp) { // 11 is the case for false value indicating no more devices
+		if (bit_id && bit_id_comp) { // 11 is the case for false value indicating no more devices or faulty case
  800119e:	4b4e      	ldr	r3, [pc, #312]	; (80012d8 <Search_ROM+0x1b0>)
  80011a0:	781b      	ldrb	r3, [r3, #0]
  80011a2:	2b00      	cmp	r3, #0
@@ -1827,13 +1827,13 @@ int Search_ROM(int cmd) {
  8001282:	4b11      	ldr	r3, [pc, #68]	; (80012c8 <Search_ROM+0x1a0>)
  8001284:	701a      	strb	r2, [r3, #0]
 
-	} while (bit_number < 65);
+	} while (bit_number < 65);  // ROM id is 64 bit
  8001286:	4b10      	ldr	r3, [pc, #64]	; (80012c8 <Search_ROM+0x1a0>)
  8001288:	781b      	ldrb	r3, [r3, #0]
  800128a:	2b40      	cmp	r3, #64	; 0x40
  800128c:	f67f af79 	bls.w	8001182 <Search_ROM+0x5a>
 
-	last_discrepancy = discrepancy_marker;
+	last_discrepancy = discrepancy_marker; // Saving the last discrepancy position for non-repeating same id
  8001290:	4b0f      	ldr	r3, [pc, #60]	; (80012d0 <Search_ROM+0x1a8>)
  8001292:	781a      	ldrb	r2, [r3, #0]
  8001294:	4b13      	ldr	r3, [pc, #76]	; (80012e4 <Search_ROM+0x1bc>)
@@ -2801,7 +2801,7 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
-	if (Temp_init() != 1) {
+	if (Temp_init() != 1) {// Initalizing the Temp sensor
  80018e6:	f7ff fb2d 	bl	8000f44 <Temp_init>
  80018ea:	4603      	mov	r3, r0
  80018ec:	2b01      	cmp	r3, #1
@@ -2811,7 +2811,7 @@ int main(void) {
  80018f2:	f002 fbff 	bl	80040f4 <puts>
 	}
 
-	Find_Temp_devices();
+	Find_Temp_devices();	// Find the number of Devices connected to the bus
  80018f6:	f7ff fe21 	bl	800153c <Find_Temp_devices>
 	printf("Number of devices on bus = %d\n", count);
  80018fa:	4b1f      	ldr	r3, [pc, #124]	; (8001978 <main+0xac>)
@@ -2819,7 +2819,7 @@ int main(void) {
  80018fe:	4619      	mov	r1, r3
  8001900:	481e      	ldr	r0, [pc, #120]	; (800197c <main+0xb0>)
  8001902:	f002 fb71 	bl	8003fe8 <iprintf>
-	num = count;
+	num = count;		// count is variable
  8001906:	4b1c      	ldr	r3, [pc, #112]	; (8001978 <main+0xac>)
  8001908:	781a      	ldrb	r2, [r3, #0]
  800190a:	4b1d      	ldr	r3, [pc, #116]	; (8001980 <main+0xb4>)
@@ -2829,7 +2829,7 @@ int main(void) {
  800190e:	2301      	movs	r3, #1
  8001910:	607b      	str	r3, [r7, #4]
  8001912:	e007      	b.n	8001924 <main+0x58>
-		Set_Threshold(UPPER_TH, LOWER_TH, i);
+		Set_Threshold(UPPER_TH, LOWER_TH, i);		// Set the upper and lower threshold for all the devices for alarm case
  8001914:	687a      	ldr	r2, [r7, #4]
  8001916:	2105      	movs	r1, #5
  8001918:	201e      	movs	r0, #30
@@ -2852,7 +2852,7 @@ int main(void) {
  8001930:	2301      	movs	r3, #1
  8001932:	603b      	str	r3, [r7, #0]
  8001934:	e008      	b.n	8001948 <main+0x7c>
-			Read_Temp(i);
+			Read_Temp(i);		// Read temperature from each device with their respective index
  8001936:	6838      	ldr	r0, [r7, #0]
  8001938:	f7ff fd00 	bl	800133c <Read_Temp>
 			printf("\n\n");

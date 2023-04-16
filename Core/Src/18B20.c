@@ -28,7 +28,7 @@ extern TIM_HandleTypeDef htim2;
 
 int Temp_init(void) {
 	printf("\n\n\n\n\n\nFrom TEMP Sensor Test\r\n");
-	HAL_TIM_Base_Start(&htim2);  // Start the timer
+	HAL_TIM_Base_Start(&htim2);  // Start the timer for getting the delay as required
 
 	Presence = DS18B20_Start();
 	if (Presence != 1) {
@@ -84,11 +84,11 @@ void DS18B20_Write(uint8_t data, uint8_t bit) {
 		{
 			// write 0
 
-			Set_Pin_Output(DS18B20_PORT, DS18B20_PIN);
+			Set_Pin_Output(DS18B20_PORT, DS18B20_PIN); // set as output
 			HAL_GPIO_WritePin(DS18B20_PORT, DS18B20_PIN, 0); // pull the pin LOW
 			delay(60);  // wait for 60 us
 
-			Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);
+			Set_Pin_Input(DS18B20_PORT, DS18B20_PIN); // set as input
 		}
 	}
 }
@@ -112,7 +112,7 @@ uint8_t DS18B20_Read(uint8_t bit) {
 
 		Set_Pin_Input(DS18B20_PORT, DS18B20_PIN);  // set as input
 
-		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH
+		if (HAL_GPIO_ReadPin(DS18B20_PORT, DS18B20_PIN))  // if the pin is HIGH store 1 in current index by shifting
 				{
 			value |= 1 << i;  // read = 1
 		}
@@ -123,13 +123,13 @@ uint8_t DS18B20_Read(uint8_t bit) {
 
 int Search_ROM(int cmd) {
 
-	Presence = DS18B20_Start();
+	Presence = DS18B20_Start(); // Before search, make sure the sensor is detectable
 	if (Presence != 1) {
 		printf("Presence not detected\n");
 		return 0;
 	}
 
-	if (FLAG_DONE == SET) {
+	if (FLAG_DONE == SET) {	// if all devices are detected, the flag is SET
 		return 0;
 	}
 	HAL_Delay(1);
@@ -145,7 +145,7 @@ int Search_ROM(int cmd) {
 		bit_id = DS18B20_Read(1);				// read LSB bit value
 		bit_id_comp = DS18B20_Read(1);  // read LSB bit value complement
 
-		if (bit_id && bit_id_comp) { // 11 is the case for false value indicating no more devices
+		if (bit_id && bit_id_comp) { // 11 is the case for false value indicating no more devices or faulty case
 			printf("No more devices\n");
 			return 0;
 		} else {
@@ -169,25 +169,25 @@ int Search_ROM(int cmd) {
 			} else { // this indicates same 0 or 1 value at LSB of available devices
 				search_value = bit_id;   // setting either 0 or 1 search
 			}
-			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1)
-			new_rom_id[counts] |= search_value << bit_counter;
+			DS18B20_Write(search_value, 1);	// Selecting the devices having ongoing-LSB value as search value (0 or 1), After this step only the device/s with search value response in next read
+			new_rom_id[counts] |= search_value << bit_counter; // store the read value in current index position of ID
 
-			if (bit_number % 8 == 0) {
+			if (bit_number % 8 == 0) {		// increase counts only after 1 byte is read
 				counts++;
 
 			}
-			bit_counter++;
+			bit_counter++;	// indexing of bit position on 1 byte
 			if (bit_counter >= 8) {
 				bit_counter = 0;
 			}
 
 		}
 
-		bit_number++;
+		bit_number++;		// increased in every loop
 
-	} while (bit_number < 65);
+	} while (bit_number < 65);  // ROM id is 64 bit
 
-	last_discrepancy = discrepancy_marker;
+	last_discrepancy = discrepancy_marker; // Saving the last discrepancy position for non-repeating same id
 
 	if (last_discrepancy == 0) {
 		FLAG_DONE = SET;
@@ -219,30 +219,30 @@ void Read_Temp(int select) {
 		return;
 	}
 
-	Match_ROM(select);
+	Match_ROM(select);					// Only the device with selected ROM ID will respond to the next commands
 	DS18B20_Write(CONVERT_S, 0);		// Convert T
 	HAL_Delay(10);						// Delay for Conversion
-	Presence = DS18B20_Start();
+	Presence = DS18B20_Start();			// Reset is required after convert command
 
-	Match_ROM(select);
+	Match_ROM(select);				// Only the device with selected ROM ID will respond to the next commands
 	DS18B20_Write(READ_S, 0);		// Read Scratch pad
 
 	for (int i = 0; i < 9; i++) {
 		data[i] = DS18B20_Read(0);
 	}
 
-	if (data[8] != CRC_CHECK(data, 8)) {
+	if (data[8] != CRC_CHECK(data, 8)) {	// Check read data integrity
 		printf("CRC Check Failed\n");
 		return;
 	}
 
-	TEMP = (data[1] << 8) | data[0];
+	TEMP = (data[1] << 8) | data[0];	// converted tempetaure is store in two 8 bits registers
 
 	if (TEMP & 0x8000)   //check of the temperature is negative
 			{
 		printf("Temperature is in -ve\n");
 		TEMP = ~TEMP + 1;       // 2's complement in case of -ve temperature
-		neg = 1;
+		neg = 1;				// Set -ve temperature flag
 	}
 
 	bit8_value = TEMP >> 4;

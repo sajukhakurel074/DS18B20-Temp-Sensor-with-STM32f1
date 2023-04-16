@@ -28,8 +28,8 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
-extern uint8_t count;
-extern uint8_t num;
+extern uint8_t count;	// variable used in each function
+extern uint8_t num; // number of one wire device on the bus (single GPIO pin)
 
 /* USER CODE END PTD */
 
@@ -104,22 +104,22 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
-	if (Temp_init() != 1) {
+	if (Temp_init() != 1) {// Initalizing the Temp sensor
 		printf("Temp Sensor Initialization failed\n");
 	}
 
-	Find_Temp_devices();
+	Find_Temp_devices();	// Find the number of Devices connected to the bus
 	printf("Number of devices on bus = %d\n", count);
-	num = count;
+	num = count;		// count is variable
 
 	for (int i = 1; i < num + 1; i++) {
-		Set_Threshold(UPPER_TH, LOWER_TH, i);
+		Set_Threshold(UPPER_TH, LOWER_TH, i);		// Set the upper and lower threshold for all the devices for alarm case
 	}
 
 	while (1) {
 
 		for (int i = 1; i < num + 1; i++) {
-			Read_Temp(i);
+			Read_Temp(i);		// Read temperature from each device with their respective index
 			printf("\n\n");
 		}
 
