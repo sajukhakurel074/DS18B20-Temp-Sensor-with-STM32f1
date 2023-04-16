@@ -5,8 +5,7 @@ This library provides the API for Reading the respective temperatures of Multipl
 The example provided is configured for STM32F1 boards. For using the library for other MCU the GPIO Pin used for Data and Signal Transfer of DS18B20 has to be configured accordingly.
 This can be achieved by changing the Header file of Library.
 
-#define DS18B20_PORT GPIOB   		// need to change
-
+#define DS18B20_PORT GPIOB   		// need to change                                                                                                                                                                                                         
 #define DS18B20_PIN GPIO_PIN_1      // need to change according to the requirement 
 
 The library is based on the datasheet by Maxim Integrated Products. https://www.analog.com/media/en/technical-documentation/data-sheets/ds18b20.pdf 
@@ -22,7 +21,9 @@ For CRC calculation CRC-8-Maxim algotithm is used.
 |   PIN         | Connections   |
 ---------------------------------
 |   Power       |   3V3         |
+
 |   GND         |   GND         |
+
 |   Data/Signal |   GPIO PIN    |
 ---------------------------------
 
