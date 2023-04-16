@@ -24,3 +24,6 @@ For CRC calculation CRC-8-Maxim algotithm is used.
 |   Power       |   3V3         |
 |   GND         |   GND         |
 |   Data/Signal |   GPIO PIN    |
+
+A 10K pull-up register is required between data/signal pin and 3V3. 
+The library here is based on normal mode operation. This sensor also provides parasitic mode where the device is powered through data/signal pin.
