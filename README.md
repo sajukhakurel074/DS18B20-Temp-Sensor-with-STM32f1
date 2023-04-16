@@ -1,4 +1,4 @@
-# ds18b20 Temperature Sensor in STM32f1
+# DS18B20 Temperature Sensor in STM32f1
 
 This library provides the API for Reading the respective temperatures of Multiple/Single DS18B20 Temperature Sensor/s connected in a single GPIO pin.
 
@@ -24,5 +24,3 @@ For CRC calculation CRC-8-Maxim algotithm is used.
 |   Power       |   3V3         |
 |   GND         |   GND         |
 |   Data/Signal |   GPIO PIN    |
-
-
